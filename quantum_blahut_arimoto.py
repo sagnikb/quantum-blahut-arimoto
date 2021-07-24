@@ -5,16 +5,39 @@ import matplotlib.pyplot as plt
 
 def D(rho, sigma):
     '''
-    Returns the quantum relative entropy between two density matrices rho and sigma.
-    Does not check for ker(sigma) subseteq ker(rho) (in which case this value is inf) 
+    Returns the quantum relative entropy D(rho||sigma) between two density matrices 
+    rho and sigma. Does not check for ker(sigma) subseteq ker(rho) (in which case 
+    this value is inf)
+
+    Parameters
+    ----------
+    rho : ndarray
+        first argument of the quantum relative entropy
+    sigma : ndarray
+        second argument of the quantum relative entropy
+
+    Returns
+    -------
+    out : float
+        value of the quantum relative entropy 
     '''
     return(np.trace(rho @ (linalg.logm(rho) - linalg.logm(sigma)))/(np.log(2)))
 
 def randpsd(n):
     '''
     Returns a random real psd matrix of dimension n x n, by first creating a random 
-    square matrix M of dimension n and then returning M @ M^T, which is always psd
-    after making the trace 1
+    square matrix M of dimension n and then returning M @ M^T normalized by its 
+    trace. The returned matrix is always PSD.
+
+    Parameters
+    ----------
+    n : int
+        size of the square PSD matrix to be returned
+
+    Returns
+    -------
+    out : ndarray
+        the generated random PSD matrix
     '''
     M = np.zeros((n,n))
     for i in range(n):
