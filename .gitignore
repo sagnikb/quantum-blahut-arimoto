@@ -1,2 +1,3 @@
 example.py
 .vscode/settings.json
+*.pyc

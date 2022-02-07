@@ -5,35 +5,46 @@ import numpy as np
 from scipy import linalg
 import matplotlib.pyplot as plt
 
+from qiskit.quantum_info import DensityMatrix
+from qiskit.quantum_info import Kraus
 
-class DensityMatrix:
+# class DensityMatrix:
 
-    def __init__(self, mat: List[List[float]]) -> None:
-        self.mat = mat
+#     def __init__(self, mat: List[List[float]]) -> None:
+#         self.mat = mat
 
-    def __add__(self, other: DensityMatrix) -> DensityMatrix:
-        return DensityMatrix(self.mat + other.mat)
+#     def __add__(self, other: DensityMatrix) -> DensityMatrix:
+#         return DensityMatrix(self.mat + other.mat)
 
-    def __sub__(self, other: DensityMatrix) -> DensityMatrix:
-        return DensityMatrix(self.mat - other.mat)
+#     def __sub__(self, other: DensityMatrix) -> DensityMatrix:
+#         return DensityMatrix(self.mat - other.mat)
 
-    def D(self, rho: DensityMatrix) -> float:
-        """
-        Return the quantum relative entropy D(self || rho) between two density
-        matrices self and rho.
-        """
-        return np.trace(self.mat @ (linalg.logm(self.mat)
-                        - linalg.logm(rho.mat)))/(np.log(2))
+#     def D(self, rho: DensityMatrix) -> float:
+#         """
+#         Return the quantum relative entropy D(self || rho) between two density
+#         matrices self and rho.
+#         """
+#         return np.trace(self.mat @ (linalg.logm(self.mat)
+#                         - linalg.logm(rho.mat)))/(np.log(2))
 
-    @classmethod
-    def random_density_matrix(cls, dim: int) -> DensityMatrix:
-        """Return a random real psd matrix of dimension dim x dim"""
-        M = np.zeros((dim,dim))
-        for i in range(dim):
-            for j in range(dim):
-                M[i,j] = random.random()
-        M = M @ (M.T)
-        return cls((1/(np.trace(M))) * M)
+#     @classmethod
+#     def random_density_matrix(cls, dim: int) -> DensityMatrix:
+#         """Return a random real psd matrix of dimension dim x dim"""
+#         M = np.zeros((dim,dim))
+#         for i in range(dim):
+#             for j in range(dim):
+#                 M[i,j] = random.random()
+#         M = M @ (M.T)
+#         return cls((1/(np.trace(M))) * M)
+
+def random_density_matrix(dim: int) -> DensityMatrix:
+    """Return a random real psd matrix of dimension dim x dim"""
+    M = np.zeros((dim,dim))
+    for i in range(dim):
+        for j in range(dim):
+            M[i,j] = random.random()
+    M = M @ (M.T)
+    return DensityMatrix((1/(np.trace(M))) * M)
 
 class Channel:
 
@@ -125,7 +136,7 @@ class CqChannel(Channel):
         density_matrices = []
         for _ in range(ip_alph):
             density_matrices.append(
-                DensityMatrix.random_density_matrix(op_dim).mat
+                random_density_matrix(op_dim).data
             )
         return(cls(density_matrices))
 
@@ -138,9 +149,9 @@ def act_channel(
     Given a channel as a list of Kraus operators and an input density matrix,
     computes the output density matrix.
     """
-    output_matrix = np.zeros(np.shape(density_matrix.mat))
+    output_matrix = np.zeros(np.shape(density_matrix.data))
     for op in channel.kraus_operators:
-        output_matrix += (op @ density_matrix.mat @ (op.conj().T))
+        output_matrix += (op @ density_matrix.data @ (op.conj().T))
     return DensityMatrix(output_matrix)
 
 def J(
@@ -155,10 +166,10 @@ def J(
     quantity (which can be 'h', 'tc', 'coh' or 'qmi') taking as input the
     channel.
     """
-    return (-1*gamma*np.trace(rho.mat @ (linalg.logm(rho.mat)/np.log(2)))
+    return (-1*gamma*np.trace(rho.data @ (linalg.logm(rho.data)/np.log(2)))
         + np.trace(
-            rho.mat @ (gamma * (linalg.logm(sigma.mat)/np.log(2))
-            + F(quantity, sigma, basis, channel).mat)
+            rho.data @ (gamma * (linalg.logm(sigma.data)/np.log(2))
+            + F(quantity, sigma, basis, channel).data)
             )
         )
 
@@ -180,7 +191,7 @@ def F(
                         np.shape(channel.kraus_operators[0])[0])
                         )
         for i in range(len(channel.kraus_operators)):
-            e_sigma += sigma.mat[i,i] * channel.kraus_operators[i]
+            e_sigma += sigma.data[i,i] * channel.kraus_operators[i]
         for i in range(len(channel.kraus_operators)):
             output_matrix += (np.outer(basis[i], basis[i])
                             * np.trace(channel.kraus_operators[i]
@@ -195,22 +206,22 @@ def F(
         temp = act_channel(
                         channel.adjoint_channel,
                         DensityMatrix(linalg.logm(
-                            act_channel(channel, sigma).mat)/np.log(2)
+                            act_channel(channel, sigma).data)/np.log(2)
                         )
                     )
-        return DensityMatrix(-1*(linalg.logm(sigma.mat)/np.log(2))) + temp
+        return DensityMatrix(-1*(linalg.logm(sigma.data)/np.log(2))) + temp
         
     if quantity == 'coh':
         temp1 = act_channel(
                         channel.adjoint_complementary_channel,
                         DensityMatrix(linalg.logm(
-                            act_channel(channel.complementary_channel, sigma).mat
+                            act_channel(channel.complementary_channel, sigma).data
                         )/np.log(2))
             )
         temp2 = act_channel(
                         channel.adjoint_channel,
                         DensityMatrix(linalg.logm(
-                            act_channel(channel, sigma).mat
+                            act_channel(channel, sigma).data
                         )/np.log(2))
             )
         return temp1 - temp2
@@ -219,16 +230,16 @@ def F(
         temp1 = act_channel(
                         channel.adjoint_complementary_channel,
                         DensityMatrix(linalg.logm(
-                            act_channel(channel.complementary_channel, sigma).mat
+                            act_channel(channel.complementary_channel, sigma).data
                         )/np.log(2))
             )
         temp2 = act_channel(
                         channel.adjoint_channel,
                         DensityMatrix(linalg.logm(
-                            act_channel(channel, sigma).mat
+                            act_channel(channel, sigma).data
                         )/np.log(2))
             )
-        return DensityMatrix(-1*linalg.logm(sigma.mat)/np.log(2)) + temp1 - temp2
+        return DensityMatrix(-1*linalg.logm(sigma.data)/np.log(2)) + temp1 - temp2
 
     print('quantity not found')
     return 1
@@ -253,8 +264,8 @@ def capacity(quantity, channel, gamma, dim, basis, eps, **kwargs):
     # for iterator in range(1):
         itern.append(iterator)
         sigmab = rhoa
-        rhoa = linalg.expm(np.log(2)*(linalg.logm(sigmab.mat)/np.log(2)
-                        + (1/gamma)*(F(quantity, sigmab, basis, channel).mat)))
+        rhoa = linalg.expm(np.log(2)*(linalg.logm(sigmab.data)/np.log(2)
+                        + (1/gamma)*(F(quantity, sigmab, basis, channel).data)))
         rhoa = DensityMatrix(rhoa/np.trace(rhoa))
         value.append(J(quantity, rhoa, rhoa, gamma, basis, channel))
     #Plotting
@@ -278,9 +289,9 @@ def capacity(quantity, channel, gamma, dim, basis, eps, **kwargs):
 
 def main():
     adc = AmplitudeDampingChannel(0.3)
-    cqc = CqChannel.random_cq_channel(2,2)
-    # print(capacity('tc', adc, 0.8, 2, Channel.create_basis(2), 0.001, plot = True))
-    print(capacity('h', cqc, 0.8, 2, Channel.create_basis(2), 0.001, plot = True))
+    # cqc = CqChannel.random_cq_channel(2,2)
+    print(capacity('tc', adc, 0.8, 2, Channel.create_basis(2), 0.001, plot = True))
+    # print(capacity('h', cqc, 0.8, 2, Channel.create_basis(2), 0.001, plot = True))
 
 if __name__ == "__main__":
     main()
